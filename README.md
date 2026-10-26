@@ -33,3 +33,18 @@ docker compose run --rm dev cmake --version
 ```
 
 A pasta do projeto é compartilhada em `/workspace` dentro do contêiner.
+
+## Compilação e testes
+
+A implementação atual valida números de modo de 1 a 32.
+Os testes cobrem todos os modos válidos e valores fora desse intervalo.
+
+Execute os comandos na pasta do projeto:
+
+```powershell
+docker compose run --rm dev cmake -S . -B build -DCMAKE_BUILD_TYPE=Debug -DBUILD_TESTING=ON
+docker compose run --rm dev cmake --build build --parallel
+docker compose run --rm dev ctest --test-dir build --output-on-failure
+```
+
+Os arquivos gerados pela compilação ficam na pasta build.
