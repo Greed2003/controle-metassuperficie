@@ -14,3 +14,22 @@ O firmware será desenvolvido em C/C++.
 
 O desenvolvimento será realizado em etapas, com versionamento Git
 e uso de Docker para compilação e testes.
+
+## Ambiente de desenvolvimento
+
+Requer Docker Desktop em execução com contêineres Linux e Docker Compose.
+
+Para construir a imagem:
+
+```powershell
+docker compose build
+```
+
+Para verificar as ferramentas no ambiente:
+
+```powershell
+docker compose run --rm dev g++ --version
+docker compose run --rm dev cmake --version
+```
+
+A pasta do projeto é compartilhada em `/workspace` dentro do contêiner.

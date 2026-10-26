@@ -1,0 +1,6 @@
+services:
+  dev:
+    build: .
+    image: controle-metassuperficie-dev:local
+    volumes:
+      - .:/workspace
