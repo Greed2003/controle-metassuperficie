@@ -77,3 +77,51 @@ code --new-window --folder-uri "vscode-remote://dev-container+$projectHex/worksp
 
 A nova janela utiliza o compilador e os cabeçalhos do container.
 Os comandos de Git e Docker continuam no PowerShell do Windows.
+
+## Integração contínua com Jenkins
+
+O Jenkins executa a compilação e os testes em um agente Docker
+identificado como `metasurface-cpp`, com um executor.
+O controlador possui zero executores.
+
+Arquivos de configuração:
+
+- `compose.jenkins.yaml`: controlador, agente e volumes persistentes.
+- `ci/Dockerfile.agent`: ambiente de compilação e testes do agente.
+- `ci/configure-agent.groovy`: cadastro do agente pela CLI administrativa.
+- `Jenkinsfile`: definição do pipeline.
+
+A configuração inicial requer os plugins `workflow-aggregator`,
+`git` e `junit`, o cadastro do agente e sua chave de conexão
+em `.jenkins-secrets/agent-secret`.
+Essa pasta é ignorada pelo Git e pelo contexto de build do Docker.
+
+Após a configuração inicial, inicie os serviços com:
+
+```powershell
+docker compose -f compose.jenkins.yaml up -d --build
+docker compose -f compose.jenkins.yaml ps
+```
+
+O Jenkins fica disponível em http://127.0.0.1:8080.
+
+O job deve usar Pipeline from SCM, com este repositório Git,
+a branch desejada e o caminho `Jenkinsfile`.
+
+O pipeline obtém o código, configura o CMake, compila e executa
+os testes com CTest. Os resultados são publicados no Jenkins
+a partir de `build/test-results.xml`, inclusive quando há testes falhando.
+A ausência de testes ou de resultados também causa falha.
+
+Após uma execução bem-sucedida, a biblioteca de compilação para
+o computador, `build/libmetasurface_core.a`, é arquivada como artefato.
+
+Após a primeira execução do job, o Jenkins consulta alterações
+na branch configurada a cada cinco minutos, enquanto estiver em execução.
+São mantidas as últimas 20 execuções.
+
+Para parar os serviços preservando os volumes:
+
+```powershell
+docker compose -f compose.jenkins.yaml stop
+```

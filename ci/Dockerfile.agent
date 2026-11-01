@@ -1,0 +1,14 @@
+FROM jenkins/inbound-agent:trixie-jdk21
+
+USER root
+
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends \
+        build-essential \
+        cmake \
+        libgtest-dev \
+    && rm -rf /var/lib/apt/lists/*
+
+USER jenkins
+
+WORKDIR /home/jenkins/agent

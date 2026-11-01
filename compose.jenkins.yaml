@@ -1,0 +1,42 @@
+name: controle-metassuperficie-ci
+
+services:
+  jenkins:
+    image: jenkins/jenkins:lts-jdk21
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:8080:8080"
+    volumes:
+      - jenkins_home:/var/jenkins_home
+
+  agent:
+    build:
+      context: .
+      dockerfile: ci/Dockerfile.agent
+    image: controle-metassuperficie-agent:local
+    init: true
+    restart: unless-stopped
+    depends_on:
+      - jenkins
+    command:
+      - "-url"
+      - "http://jenkins:8080/"
+      - "-name"
+      - "metasurface-cpp"
+      - "-secret"
+      - "@/run/secrets/jenkins_agent_secret"
+      - "-webSocket"
+      - "-workDir"
+      - "/home/jenkins/agent"
+    secrets:
+      - jenkins_agent_secret
+    volumes:
+      - agent_work:/home/jenkins/agent
+
+volumes:
+  jenkins_home:
+  agent_work:
+
+secrets:
+  jenkins_agent_secret:
+    file: ./.jenkins-secrets/agent-secret
