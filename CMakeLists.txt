@@ -9,6 +9,7 @@ set(CMAKE_CXX_EXTENSIONS OFF)
 add_library(metasurface_core STATIC
     src/mode.cpp
     src/controller_state.cpp
+    src/binary_input.cpp
 )
 target_include_directories(metasurface_core PUBLIC include)
 target_compile_options(metasurface_core PRIVATE -Wall -Wextra -Wpedantic)
@@ -29,4 +30,9 @@ if(BUILD_TESTING)
     include(GoogleTest)
     gtest_discover_tests(mode_tests)
     gtest_discover_tests(controller_state_tests)
+
+    add_executable(binary_input_tests tests/binary_input_test.cpp)
+    target_link_libraries(binary_input_tests PRIVATE metasurface_core GTest::gtest_main)
+    target_compile_options(binary_input_tests PRIVATE -Wall -Wextra -Wpedantic)
+    gtest_discover_tests(binary_input_tests)
 endif()

@@ -132,3 +132,15 @@ O script `ci/configure-job.groovy` cria ou atualiza o job
 `controle-metassuperficie`, que utiliza o `Jenkinsfile` deste repositório.
 A branch pode ser informada como primeiro argumento; o padrão é `main`.
 O script deve ser executado pela CLI administrativa do Jenkins.
+
+### Entrada binária
+
+A função `parse_binary_input` converte uma sequência de caracteres
+em uma máscara de 32 bits, sem alocação dinâmica.
+Aceita somente `0` e `1`, com comprimento igual ao modo informado.
+O primeiro caractere corresponde ao canal 1.
+Por exemplo, no modo 4, `1010` corresponde à máscara 5: canais 1 e 3 ativos.
+
+O comprimento não inclui o terminador nulo. O buffer deve conter
+pelo menos a quantidade de bytes informada; não precisa terminar em nulo.
+Em caso de erro, a função retorna `false` e preserva o argumento de saída.
