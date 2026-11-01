@@ -48,3 +48,18 @@ docker compose run --rm dev ctest --test-dir build --output-on-failure
 ```
 
 Os arquivos gerados pela compilação ficam na pasta build.
+
+## VS Code com Docker
+
+Requer Docker Desktop em execução e a extensão Dev Containers no VS Code.
+
+Na raiz do projeto, execute no PowerShell:
+
+```powershell
+$projectPath = (Get-Location).Path
+$projectHex = -join ([System.Text.Encoding]::UTF8.GetBytes($projectPath) | ForEach-Object { $_.ToString("x2") })
+code --new-window --folder-uri "vscode-remote://dev-container+$projectHex/workspace"
+```
+
+A nova janela utiliza o compilador e os cabeçalhos do container.
+Os comandos de Git e Docker continuam no PowerShell do Windows.
