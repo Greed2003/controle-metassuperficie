@@ -36,8 +36,22 @@ A pasta do projeto é compartilhada em `/workspace` dentro do contêiner.
 
 ## Compilação e testes
 
-A implementação atual valida números de modo de 1 a 32.
-Os testes cobrem todos os modos válidos e valores fora desse intervalo.
+A implementação atual valida modos de 1 a 32 e gerencia o estado
+lógico dos 32 canais por meio da classe `ControllerState`.
+
+Regras implementadas:
+
+- A inicialização mantém todas as saídas em 0, sem modo selecionado.
+- O valor interno 0 indica ausência de seleção; não é um modo válido.
+- Toda seleção válida de modo zera as saídas, inclusive ao repetir o modo atual.
+- No modo N, somente os canais de 1 a N podem ser ativados.
+- Modos inválidos e combinações de saídas incompatíveis preservam o estado anterior.
+
+As saídas são representadas por uma máscara de 32 bits:
+o bit 0 corresponde ao canal 1 e o bit 31 corresponde ao canal 32.
+
+Os testes verificam a validação dos modos, a inicialização,
+as mudanças de estado e os limites dos canais permitidos.
 
 Execute os comandos na pasta do projeto:
 

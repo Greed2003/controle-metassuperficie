@@ -6,7 +6,10 @@ set(CMAKE_CXX_STANDARD 11)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 
-add_library(metasurface_core STATIC src/mode.cpp)
+add_library(metasurface_core STATIC
+    src/mode.cpp
+    src/controller_state.cpp
+)
 target_include_directories(metasurface_core PUBLIC include)
 target_compile_options(metasurface_core PRIVATE -Wall -Wextra -Wpedantic)
 
@@ -19,6 +22,11 @@ if(BUILD_TESTING)
     target_link_libraries(mode_tests PRIVATE metasurface_core GTest::gtest_main)
     target_compile_options(mode_tests PRIVATE -Wall -Wextra -Wpedantic)
 
+    add_executable(controller_state_tests tests/controller_state_test.cpp)
+    target_link_libraries(controller_state_tests PRIVATE metasurface_core GTest::gtest_main)
+    target_compile_options(controller_state_tests PRIVATE -Wall -Wextra -Wpedantic)
+
     include(GoogleTest)
     gtest_discover_tests(mode_tests)
+    gtest_discover_tests(controller_state_tests)
 endif()
