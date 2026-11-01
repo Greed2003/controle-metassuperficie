@@ -125,3 +125,10 @@ Para parar os serviços preservando os volumes:
 ```powershell
 docker compose -f compose.jenkins.yaml stop
 ```
+
+### Cadastro do job
+
+O script `ci/configure-job.groovy` cria ou atualiza o job
+`controle-metassuperficie`, que utiliza o `Jenkinsfile` deste repositório.
+A branch pode ser informada como primeiro argumento; o padrão é `main`.
+O script deve ser executado pela CLI administrativa do Jenkins.
