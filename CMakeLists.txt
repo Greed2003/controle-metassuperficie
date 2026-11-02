@@ -22,6 +22,10 @@ add_library(metasurface_core STATIC
 target_include_directories(metasurface_core PUBLIC include)
 target_compile_options(metasurface_core PRIVATE -Wall -Wextra -Wpedantic)
 
+add_library(metasurface_avr STATIC src/avr_digital_output.cpp)
+target_link_libraries(metasurface_avr PUBLIC metasurface_core)
+target_compile_options(metasurface_avr PRIVATE -Wall -Wextra -Wpedantic)
+
 include(CTest)
 
 if(CMAKE_CROSSCOMPILING AND BUILD_TESTING)
@@ -87,4 +91,9 @@ if(BUILD_TESTING)
     target_link_libraries(output_control_tests PRIVATE metasurface_core GTest::gtest_main)
     target_compile_options(output_control_tests PRIVATE -Wall -Wextra -Wpedantic)
     gtest_discover_tests(output_control_tests)
+
+    add_executable(avr_digital_output_tests tests/avr_digital_output_test.cpp)
+    target_link_libraries(avr_digital_output_tests PRIVATE metasurface_avr GTest::gtest_main)
+    target_compile_options(avr_digital_output_tests PRIVATE -Wall -Wextra -Wpedantic)
+    gtest_discover_tests(avr_digital_output_tests)
 endif()

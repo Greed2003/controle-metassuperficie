@@ -304,10 +304,10 @@ docker compose run --rm dev avr-objdump -f build/avr/libmetasurface_core.a
 
 A biblioteca AVR fica em `build/avr/libmetasurface_core.a`; a biblioteca nativa permanece em `build/libmetasurface_core.a`.
 Os objetos do ATmega2560 usam a arquitetura avr:6, mostrada pelo avr-objdump.
-Os 153 testes GoogleTest continuam sendo executados no computador, na pasta build.
+Os 178 testes GoogleTest continuam sendo executados no computador, na pasta build.
 BUILD_TESTING deve ficar OFF na compilacao cruzada, para nao misturar GoogleTest nativo com objetos AVR.
 
-O Jenkins inclui a etapa Compilar AVR e arquiva as duas bibliotecas.
+O Jenkins inclui a etapa Compilar AVR e arquiva o nucleo nativo, o nucleo AVR e o adaptador AVR.
 Depois de alterar o Dockerfile do agente, reconstrua a imagem e atualize o servico antes de executar a pipeline:
 
 ```powershell
@@ -316,7 +316,7 @@ docker compose -f compose.jenkins.yaml up -d --no-deps agent
 ```
 
 Esta etapa verifica a compilacao do nucleo para AVR. Ainda nao gera firmware .hex nem grava a placa.
-A ligacao do programa completo e a integracao com UART e GPIO serao adicionadas nas proximas etapas.
+A ligacao do programa completo, a integracao com UART e a validacao fisica ficam para as proximas etapas.
 
 ## Catalogo na memoria Flash
 
@@ -332,7 +332,7 @@ docker compose run --rm dev cmake "-DARCHIVE=build/avr/libmetasurface_core.a" -P
 ```
 
 O script exige que kPatterns ocupe 1536 bytes em uma secao .progmem.data. O Jenkins executa essa verificacao na etapa Compilar AVR.
-A verificacao inspeciona a biblioteca, sem executar codigo na placa. Os 153 testes continuam sendo executados na compilacao nativa.
+A verificacao inspeciona a biblioteca, sem executar codigo na placa. Os 178 testes continuam sendo executados na compilacao nativa.
 pgm_read_dword requer o catalogo nos primeiros 64 KiB da Flash; a posicao final e o uso total de memoria devem ser conferidos ao ligar o firmware.
 
 ## Controle das saidas digitais
@@ -349,4 +349,34 @@ As escritas sao sequenciais. Essas funcoes nao alteram o estado logico nem inter
 
 Os 14 novos testes usam um substituto de DigitalOutput para verificar pinos, niveis, ordem de inicializacao e aplicacao dos comandos.
 Nesta etapa, o chamador invoca apply_outputs explicitamente; o receptor de linhas continua independente do hardware.
-O adaptador AVR, a integracao com UART e a validacao fisica ficam para as proximas etapas.
+O adaptador AVR esta descrito abaixo; a integracao com UART e a validacao fisica ficam para as proximas etapas.
+
+## GPIO do ATmega2560
+
+AvrDigitalOutput implementa DigitalOutput e aceita somente D22 a D53.
+No AVR, o construtor padrao referencia os registradores reais do ATmega2560.
+O construtor alternativo recebe referencias a registradores, usadas pelos testes nativos; os registradores devem existir enquanto o adaptador for usado.
+Nenhum construtor escreve nos registradores.
+
+| Pinos | Bits da porta, na mesma ordem |
+| --- | --- |
+| D22 a D29 | PA0 a PA7 |
+| D30 a D37 | PC7 a PC0 |
+| D38 | PD7 |
+| D39 a D41 | PG2 a PG0 |
+| D42 a D49 | PL7 a PL0 |
+| D50 a D53 | PB3 a PB0 |
+
+Referencia: https://docs.arduino.cc/resources/pinouts/A000067-full-pinout.pdf
+
+write altera somente o bit correspondente em PORTx. configure_output habilita somente esse bit em DDRx, preservando o nivel previamente escrito.
+Pinos fora do intervalo sao ignorados. No AVR, cada alteracao usa ATOMIC_BLOCK(ATOMIC_RESTORESTATE), restaurando o estado anterior das interrupcoes.
+Os demais bits das portas sao preservados. Os 32 canais continuam sendo atualizados sequencialmente.
+Os pinos devem estar disponiveis como GPIO: perifericos como SPI, memoria externa e saidas de temporizadores nao podem assumir esses mesmos pinos.
+O adaptador nao configura nem desativa esses perifericos.
+
+No firmware AVR, crie AvrDigitalOutput, chame initialize_outputs na inicializacao e apply_outputs para aplicar ControllerState.
+A biblioteca separada fica em build/avr/libmetasurface_avr.a e depende de metasurface_core.
+O Jenkins compila e arquiva essa biblioteca junto das bibliotecas do nucleo.
+Os 11 novos testes verificam mapeamento, bits preservados, inicializacao e aplicacao dos estados: 178 testes nativos no total.
+Os testes usam registradores simulados. A compilacao AVR ainda produz bibliotecas estaticas; nao gera .hex nem valida sinais na placa.
