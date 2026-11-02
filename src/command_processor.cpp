@@ -3,10 +3,13 @@
 #include "metasurface/controller_state.hpp"
 #include "metasurface/mode_command.hpp"
 #include "metasurface/table_command.hpp"
+#include "metasurface/pattern_list.hpp"
+#include <string.h>
 
 namespace metasurface {
 
-bool process_command(const char* text, size_t length, ControllerState& state) {
+bool process_command(const char* text, size_t length, ControllerState& state,
+                     TextOutput* output) {
     if (text == nullptr || length == 0) {
         return false;
     }
@@ -17,6 +20,10 @@ bool process_command(const char* text, size_t length, ControllerState& state) {
 
     if (text[0] == 'T') {
         return apply_table_command(text, length, state);
+    }
+
+    if (length == 5 && memcmp(text, "LISTA", 5) == 0) {
+        return output != nullptr && write_pattern_list(state.mode(), *output);
     }
 
     uint32_t outputs = 0;

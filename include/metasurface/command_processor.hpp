@@ -6,8 +6,10 @@
 namespace metasurface {
 
 class ControllerState;
+class TextOutput;
 
-bool process_command(const char* text, size_t length, ControllerState& state);
+bool process_command(const char* text, size_t length, ControllerState& state,
+                     TextOutput* output = nullptr);
 
 }
 
