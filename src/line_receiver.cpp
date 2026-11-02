@@ -6,13 +6,14 @@ namespace metasurface {
 LineReceiver::LineReceiver()
     : buffer_{}, length_(0), discarding_(false), carriage_return_(false) {}
 
-ReceiveResult LineReceiver::receive(char character, ControllerState& state) {
+ReceiveResult LineReceiver::receive(char character, ControllerState& state,
+                                    TextOutput* output) {
     if (character == '\n') {
         ReceiveResult result = ReceiveResult::Pending;
         if (discarding_) {
             result = ReceiveResult::Rejected;
         } else if (length_ > 0) {
-            result = process_command(buffer_, length_, state)
+            result = process_command(buffer_, length_, state, output)
                 ? ReceiveResult::Applied : ReceiveResult::Rejected;
         }
         reset();

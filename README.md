@@ -227,3 +227,27 @@ o comando e rejeitado sem alterar o modo nem as saidas.
 `M<n>` e `T<n>` compartilham a validacao da sintaxe numerica.
 
 Na recepcao por linhas, o comando so e aplicado ao receber LF; CRLF tambem e aceito.
+
+## Comando LISTA
+
+`LISTA` mostra as tabelas do modo atual sem alterar o modo nem as saidas.
+Use exatamente LISTA em maiusculas, sem argumentos ou espacos.
+A recepcao por linhas executa a consulta ao receber LF e tambem aceita CRLF.
+
+Exemplo de resposta no modo M2:
+
+```text
+M2
+T1: 00
+T2: 01
+T3: 10
+T4: 11
+```
+
+Cada padrao tem exatamente a quantidade de bits do modo, preservando zeros a esquerda.
+O primeiro bit corresponde ao canal 1. As linhas da resposta terminam com LF.
+
+A interface `TextOutput` recebe o texto uma linha por vez, usando um buffer fixo.
+Passe o destino de saida a `process_command` ou a `LineReceiver::receive`.
+Sem modo selecionado ou sem destino de saida, LISTA e rejeitado.
+A conexao dessa interface com a UART sera adicionada na etapa de hardware.

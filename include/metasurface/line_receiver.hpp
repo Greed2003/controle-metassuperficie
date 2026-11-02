@@ -7,13 +7,15 @@
 namespace metasurface {
 
 class ControllerState;
+class TextOutput;
 
 enum class ReceiveResult { Pending, Applied, Rejected };
 
 class LineReceiver {
 public:
     LineReceiver();
-    ReceiveResult receive(char character, ControllerState& state);
+    ReceiveResult receive(char character, ControllerState& state,
+                          TextOutput* output = nullptr);
 
 private:
     void reset();
