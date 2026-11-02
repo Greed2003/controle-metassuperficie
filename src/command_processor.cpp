@@ -5,12 +5,25 @@
 #include "metasurface/mode_command.hpp"
 #include "metasurface/table_command.hpp"
 #include "metasurface/pattern_list.hpp"
+#include "metasurface/output_control.hpp"
 #include <string.h>
 
 namespace metasurface {
+namespace {
+
+bool finish_change(bool applied, CommandResponse success, CommandResponse error,
+                   const ControllerState& state, TextOutput* output, DigitalOutput* pins) {
+    if (applied && pins != nullptr) {
+        apply_outputs(state, *pins);
+    }
+    write_command_response(applied ? success : error, state.mode(), output);
+    return applied;
+}
+
+}
 
 bool process_command(const char* text, size_t length, ControllerState& state,
-                     TextOutput* output) {
+                     TextOutput* output, DigitalOutput* pins) {
     if (text == nullptr || length == 0) {
         write_command_response(CommandResponse::InvalidCommand, state.mode(), output);
         return false;
@@ -18,9 +31,8 @@ bool process_command(const char* text, size_t length, ControllerState& state,
 
     if (text[0] == 'M') {
         const bool applied = apply_mode_command(text, length, state);
-        write_command_response(applied ? CommandResponse::ModeSelected
-                                       : CommandResponse::InvalidMode, state.mode(), output);
-        return applied;
+        return finish_change(applied, CommandResponse::ModeSelected,
+                             CommandResponse::InvalidMode, state, output, pins);
     }
 
     if (state.mode() == 0) {
@@ -30,9 +42,8 @@ bool process_command(const char* text, size_t length, ControllerState& state,
 
     if (text[0] == 'T') {
         const bool applied = apply_table_command(text, length, state);
-        write_command_response(applied ? CommandResponse::TableApplied
-                                       : CommandResponse::InvalidTable, state.mode(), output);
-        return applied;
+        return finish_change(applied, CommandResponse::TableApplied,
+                             CommandResponse::InvalidTable, state, output, pins);
     }
 
     if (length == 5 && memcmp(text, "LISTA", 5) == 0) {
@@ -47,9 +58,8 @@ bool process_command(const char* text, size_t length, ControllerState& state,
     uint32_t outputs = 0;
     const bool applied = parse_binary_input(text, length, state.mode(), outputs)
         && state.set_outputs(outputs);
-    write_command_response(applied ? CommandResponse::OutputsApplied
-                                   : CommandResponse::InvalidBinary, state.mode(), output);
-    return applied;
+    return finish_change(applied, CommandResponse::OutputsApplied,
+                         CommandResponse::InvalidBinary, state, output, pins);
 }
 
 }

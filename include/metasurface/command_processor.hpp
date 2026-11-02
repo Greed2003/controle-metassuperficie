@@ -6,10 +6,12 @@
 namespace metasurface {
 
 class ControllerState;
+class DigitalOutput;
 class TextOutput;
 
+// Optional pins must be initialized; successful changes reach them before the reply.
 bool process_command(const char* text, size_t length, ControllerState& state,
-                     TextOutput* output = nullptr);
+                     TextOutput* output = nullptr, DigitalOutput* pins = nullptr);
 
 }
 
