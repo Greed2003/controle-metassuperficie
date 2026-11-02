@@ -250,7 +250,7 @@ O primeiro bit corresponde ao canal 1. As linhas da resposta terminam com LF.
 A listagem usa `TextOutput` para enviar uma linha por vez, com um buffer fixo.
 Passe o destino de saida a `process_command` ou a `LineReceiver::receive`.
 Sem modo selecionado ou sem destino de saida, LISTA e rejeitado.
-A conexao dessa interface com a UART sera adicionada na etapa de hardware.
+SerialTransport implementa essa interface e envia as respostas pela UART.
 
 ## Respostas aos comandos
 
@@ -280,7 +280,7 @@ O receptor fica pronto para o proximo comando depois de cada linha.
 `TextOutput::write` pode receber fragmentos da resposta; consuma os bytes antes de retornar.
 Todas as respostas terminam com LF. Passe o mesmo destino em cada chamada de recepcao.
 Sem destino de saida, M, T e binarios continuam funcionando; LISTA exige um destino.
-As confirmacoes indicam atualizacao do estado logico; a integracao com GPIO e UART sera feita depois.
+No firmware integrado, as confirmacoes sao geradas depois das escritas no GPIO, sem medir o circuito fisico.
 
 ## Compilacao para ATmega2560
 
@@ -294,7 +294,7 @@ Reconstrua a imagem de desenvolvimento depois de alterar o Dockerfile:
 docker compose build dev
 ```
 
-Para compilar o nucleo para o microcontrolador:
+Para compilar as bibliotecas e o firmware para o microcontrolador:
 
 ```powershell
 docker compose run --rm dev cmake -S . -B build/avr "-DCMAKE_TOOLCHAIN_FILE=cmake/avr-mega2560.cmake" -DCMAKE_BUILD_TYPE=MinSizeRel -DBUILD_TESTING=OFF
@@ -307,7 +307,7 @@ Os objetos do ATmega2560 usam a arquitetura avr:6, mostrada pelo avr-objdump.
 Os 224 testes GoogleTest continuam sendo executados no computador, na pasta build.
 BUILD_TESTING deve ficar OFF na compilacao cruzada, para nao misturar GoogleTest nativo com objetos AVR.
 
-O Jenkins inclui a etapa Compilar AVR e arquiva o nucleo nativo, o nucleo AVR e o adaptador AVR.
+O Jenkins inclui a etapa Compilar AVR e arquiva as bibliotecas, o ELF, o HEX, o mapa de ligacao e o relatorio de memoria.
 Depois de alterar o Dockerfile do agente, reconstrua a imagem e atualize o servico antes de executar a pipeline:
 
 ```powershell
@@ -315,8 +315,8 @@ docker compose -f compose.jenkins.yaml build agent
 docker compose -f compose.jenkins.yaml up -d --no-deps agent
 ```
 
-Esta etapa verifica a compilacao do nucleo para AVR. Ainda nao gera firmware .hex nem grava a placa.
-A ligacao do programa completo, a integracao com UART e a validacao fisica ficam para as proximas etapas.
+A compilacao AVR liga o programa completo e gera o firmware .hex, conforme a secao Firmware executavel.
+A gravacao e a validacao fisica na placa ainda nao sao executadas pelo projeto.
 
 ## Catalogo na memoria Flash
 
@@ -333,7 +333,7 @@ docker compose run --rm dev cmake "-DARCHIVE=build/avr/libmetasurface_core.a" -P
 
 O script exige que kPatterns ocupe 1536 bytes em uma secao .progmem.data. O Jenkins executa essa verificacao na etapa Compilar AVR.
 A verificacao inspeciona a biblioteca, sem executar codigo na placa. Os 224 testes continuam sendo executados na compilacao nativa.
-pgm_read_dword requer o catalogo nos primeiros 64 KiB da Flash; a posicao final e o uso total de memoria devem ser conferidos ao ligar o firmware.
+pgm_read_dword requer o catalogo nos primeiros 64 KiB da Flash. ci/check-avr-firmware.cmake verifica essa condicao no ELF final, junto dos limites de Flash e SRAM.
 
 ## Controle das saidas digitais
 
@@ -349,7 +349,7 @@ As escritas sao sequenciais. Essas funcoes nao alteram o estado logico nem inter
 
 Os 14 novos testes usam um substituto de DigitalOutput para verificar pinos, niveis, ordem de inicializacao e aplicacao dos comandos.
 ControllerApplication coordena a recepcao dos comandos e a aplicacao das saidas pelas interfaces abstratas.
-Os adaptadores de GPIO e UART estao descritos abaixo; a integracao do firmware e a validacao fisica ficam para as proximas etapas.
+Os adaptadores de GPIO e UART estao descritos abaixo e sao integrados pelo firmware. A validacao fisica permanece pendente.
 
 ## GPIO do ATmega2560
 
@@ -375,11 +375,11 @@ Os demais bits das portas sao preservados. Os 32 canais continuam sendo atualiza
 Os pinos devem estar disponiveis como GPIO: perifericos como SPI, memoria externa e saidas de temporizadores nao podem assumir esses mesmos pinos.
 O adaptador nao configura nem desativa esses perifericos.
 
-No firmware AVR, crie AvrDigitalOutput, chame initialize_outputs na inicializacao e apply_outputs para aplicar ControllerState.
+No firmware AVR, SerialTransport e ControllerApplication coordenam initialize_outputs e apply_outputs usando AvrDigitalOutput.
 A biblioteca separada fica em build/avr/libmetasurface_avr.a e depende de metasurface_core.
 O Jenkins compila e arquiva essa biblioteca junto das bibliotecas do nucleo.
 Os testes de GPIO verificam mapeamento, bits preservados, inicializacao e aplicacao dos estados.
-Os testes usam registradores simulados. A compilacao AVR ainda produz bibliotecas estaticas; nao gera .hex nem valida sinais na placa.
+Os testes usam registradores simulados. A compilacao AVR gera o ELF e o HEX, mas nao valida sinais na placa.
 
 ## UART do ATmega2560
 
@@ -428,7 +428,7 @@ Se o proprio LF foi perdido ou recebido com erro, o descarte continua ate outro 
 Sem TextOutput, M, T e bits continuam funcionando; LISTA e rejeitado por nao haver destino para a listagem.
 process_command e LineReceiver aceitam um DigitalOutput opcional, previamente inicializado; chamadas existentes continuam validas.
 Use um unico fluxo de execucao, sem chamadas reentrantes pelos adaptadores.
-SerialTransport conecta esta aplicacao a UART; o ponto de entrada e a geracao do firmware .hex ficam para a proxima etapa.
+SerialTransport conecta esta aplicacao a UART; firmware/main.cpp instancia os adaptadores e executa o transporte continuamente.
 
 Os 17 testes da aplicacao verificam inicializacao, todos os modos e tabelas, ordem das respostas, preservacao das saidas e recuperacao de linhas.
 
@@ -461,4 +461,39 @@ Se uma futura resposta ultrapassar 512 bytes, faulted fica true e o transporte p
 Esse caso indica quebra do limite interno, nao erro de comando; nao ha desfazimento de comandos ja aplicados.
 
 Os 18 novos testes cobrem pausas no envio, listagens completas, ordem dos comandos, erros, estouro da fila, reinicializacao e o adaptador AVR.
-Total: 224 testes nativos. O ponto de entrada do firmware, os arquivos ELF/HEX e a validacao fisica ficam para as proximas etapas.
+Total: 224 testes nativos. A geracao do firmware esta descrita abaixo; a validacao fisica permanece pendente.
+
+## Firmware executavel
+
+firmware/main.cpp instancia AvrDigitalOutput, AvrUart e SerialTransport com duracao estatica.
+Os construtores nao executam I/O. O inicio do programa desabilita o watchdog antes da inicializacao da RAM e dos construtores C++.
+main inicializa o transporte: escreve LOW em D22 a D53, configura as saidas e so depois habilita a UART.
+Em seguida, executa poll continuamente, sem atrasos e com interrupcoes globais desabilitadas.
+O firmware usa C++11 e avr-libc, sem Arduino Core, alocacao dinamica, excecoes ou RTTI.
+A inicializacao das saidas vale a partir da execucao do programa; nao define os niveis eletricos durante reset ou bootloader.
+
+A configuracao AVR inclui cmake/firmware-avr.cmake. O build padrao gera:
+
+| Arquivo em build/avr | Conteudo |
+| --- | --- |
+| metasurface_firmware.elf | Executavel AVR com simbolos |
+| metasurface_firmware.hex | Imagem Intel HEX das secoes .text e .data |
+| metasurface_firmware.map | Mapa de ligacao |
+| metasurface_firmware.size.txt | Limites, consumo de memoria, secoes e simbolos |
+
+Antes de gerar o HEX, ci/check-avr-firmware.cmake exige um ELF executavel avr:6 e verifica:
+
+- Imagem de Flash de ate 253952 bytes, reservando 8192 bytes para o bootloader do Mega 2560.
+- Uso estatico da SRAM interna de ate 6144 dos 8192 bytes, deixando ao menos 2048 bytes para a pilha.
+- Catalogo kPatterns de 1536 bytes na Flash, inteiramente nos primeiros 65536 bytes, conforme pgm_read_dword.
+- Somente as secoes alocadas previstas: .text, .data, .bss e .noinit.
+
+A medicao considera os enderecos finais e inclui os dados inicializados na imagem de Flash.
+A SRAM estatica inclui os objetos e buffers globais. A reserva de pilha e um limite de build, nao uma medicao do pior caso em execucao.
+O target firmware_artifacts refaz a verificacao e gera o HEX a cada build AVR, mesmo sem recompilar os fontes.
+O mapa e produzido ao ligar o ELF. O Jenkins arquiva os quatro arquivos apos o sucesso da pipeline.
+A compilacao nativa continua independente das ferramentas AVR e executa os mesmos 224 testes.
+
+O firmware usa USART0 a 115200 baud nominais, 8N1, com clock de 16 MHz.
+Envie um comando por vez e aguarde a resposta completa, conforme Transporte serial.
+Esta etapa gera os arquivos; nao grava a placa, altera fuses nem valida temporizacao ou sinais fisicos.

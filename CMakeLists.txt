@@ -32,6 +32,10 @@ target_link_libraries(metasurface_avr PUBLIC metasurface_core)
 target_compile_options(metasurface_avr PRIVATE -Wall -Wextra -Wpedantic)
 target_compile_definitions(metasurface_avr PUBLIC F_CPU=16000000UL)
 
+if(CMAKE_CROSSCOMPILING AND CMAKE_SYSTEM_PROCESSOR STREQUAL "avr")
+    include(cmake/firmware-avr.cmake)
+endif()
+
 include(CTest)
 
 if(CMAKE_CROSSCOMPILING AND BUILD_TESTING)

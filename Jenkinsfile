@@ -59,7 +59,7 @@ pipeline {
 
     post {
         success {
-            archiveArtifacts artifacts: "build/libmetasurface_core.a,build/avr/libmetasurface_core.a,build/avr/libmetasurface_avr.a", fingerprint: true
+            archiveArtifacts artifacts: "build/libmetasurface_core.a,build/avr/libmetasurface_core.a,build/avr/libmetasurface_avr.a,build/avr/metasurface_firmware.elf,build/avr/metasurface_firmware.hex,build/avr/metasurface_firmware.map,build/avr/metasurface_firmware.size.txt", fingerprint: true
         }
     }
 }
