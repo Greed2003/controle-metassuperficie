@@ -304,7 +304,7 @@ docker compose run --rm dev avr-objdump -f build/avr/libmetasurface_core.a
 
 A biblioteca AVR fica em `build/avr/libmetasurface_core.a`; a biblioteca nativa permanece em `build/libmetasurface_core.a`.
 Os objetos do ATmega2560 usam a arquitetura avr:6, mostrada pelo avr-objdump.
-Os 206 testes GoogleTest continuam sendo executados no computador, na pasta build.
+Os 224 testes GoogleTest continuam sendo executados no computador, na pasta build.
 BUILD_TESTING deve ficar OFF na compilacao cruzada, para nao misturar GoogleTest nativo com objetos AVR.
 
 O Jenkins inclui a etapa Compilar AVR e arquiva o nucleo nativo, o nucleo AVR e o adaptador AVR.
@@ -332,7 +332,7 @@ docker compose run --rm dev cmake "-DARCHIVE=build/avr/libmetasurface_core.a" -P
 ```
 
 O script exige que kPatterns ocupe 1536 bytes em uma secao .progmem.data. O Jenkins executa essa verificacao na etapa Compilar AVR.
-A verificacao inspeciona a biblioteca, sem executar codigo na placa. Os 206 testes continuam sendo executados na compilacao nativa.
+A verificacao inspeciona a biblioteca, sem executar codigo na placa. Os 224 testes continuam sendo executados na compilacao nativa.
 pgm_read_dword requer o catalogo nos primeiros 64 KiB da Flash; a posicao final e o uso total de memoria devem ser conferidos ao ligar o firmware.
 
 ## Controle das saidas digitais
@@ -401,7 +401,7 @@ Chame initialize antes da comunicacao, com o transmissor ocioso; desabilitar RX 
 As operacoes retornam imediatamente. true em try_write nao significa que o ultimo bit ja saiu pelo pino.
 Use a UART por consulta de flags, a partir de um unico fluxo de execucao, sem outro driver ou ISR acessando a USART0.
 O chamador deve consultar a recepcao frequentemente para evitar perda de dados. Ao receber Error, deve invalidar a linha atual ate um novo LF valido.
-A ligacao com LineReceiver, TextOutput e GPIO sera feita na integracao do firmware; este adaptador troca bytes e nao interpreta comandos.
+SerialTransport liga a UART a aplicacao e ao GPIO; o adaptador AvrUart continua responsavel apenas pela troca de bytes.
 
 A UART integra libmetasurface_avr.a, ja compilada e arquivada pelo Jenkins.
 Os 11 testes da UART cobrem configuracao, disponibilidade, todos os valores de byte e erros.
@@ -428,6 +428,37 @@ Se o proprio LF foi perdido ou recebido com erro, o descarte continua ate outro 
 Sem TextOutput, M, T e bits continuam funcionando; LISTA e rejeitado por nao haver destino para a listagem.
 process_command e LineReceiver aceitam um DigitalOutput opcional, previamente inicializado; chamadas existentes continuam validas.
 Use um unico fluxo de execucao, sem chamadas reentrantes pelos adaptadores.
-O loop da UART, o transporte das respostas e a geracao do firmware .hex ficam para a proxima etapa.
+SerialTransport conecta esta aplicacao a UART; o ponto de entrada e a geracao do firmware .hex ficam para a proxima etapa.
 
-Os 17 novos testes verificam inicializacao, todos os modos e tabelas, ordem das respostas, preservacao das saidas e recuperacao de linhas: 206 testes nativos no total.
+Os 17 testes da aplicacao verificam inicializacao, todos os modos e tabelas, ordem das respostas, preservacao das saidas e recuperacao de linhas.
+
+## Transporte serial
+
+SerialTransport possui ControllerApplication e conecta a interface Uart ao controle das saidas. AvrUart implementa Uart.
+O construtor nao executa I/O. initialize reinicia o estado, coloca os 32 pinos em LOW e os configura antes de inicializar a UART.
+As dependencias devem existir enquanto o transporte for usado. Use um unico fluxo de execucao, sem reentrancia ou outro consumidor da UART.
+
+Chame poll continuamente: cada chamada tenta ler um byte, processa no maximo um evento recebido e tenta transmitir no maximo um byte.
+Nao ha espera pela disponibilidade da UART. Uma escrita recusada e tentada novamente sem avancar a resposta.
+A resposta inteira e copiada para um buffer fixo de 512 bytes antes de iniciar seu envio; LISTA em M32 usa 451 bytes.
+O comando seguinte so e processado depois que todos os bytes da resposta anterior forem aceitos pela UART.
+response_pending informa bytes ainda no buffer de software; false nao garante que o ultimo byte ja terminou no fio.
+
+Durante o envio, a recepcao continua em uma fila fixa de 64 eventos, incluindo marcadores de erro.
+Erros da UART invalidam a linha na ordem em que chegaram; o byte com erro nunca e interpretado como dado ou LF.
+Se a fila lotar, a entrada seguinte descarta toda a fila ainda nao processada e invalida a linha, preservando a resposta em curso.
+O proximo LF valido processado encerra o descarte e produz ERRO de linha invalida. Comandos descartados nao alteram as saidas.
+Erros ou estouros repetidos antes desse realinhamento continuam o descarte. Um LF com erro nao encerra a linha.
+
+O computador deve enviar um comando e aguardar sua resposta completa antes do seguinte; a fila nao garante rajadas ilimitadas.
+Em LISTA, aguarde o cabecalho e todas as tabelas: 2 em M1, 4 em M2, 8 em M3 e 12 em M4 a M32.
+As demais respostas terminam em um LF. Linhas vazias nao recebem resposta.
+poll deve ser chamado com frequencia suficiente; a fila de software nao evita perda de bytes enquanto a UART deixa de ser atendida.
+
+Inicialize ou reinicialize com a comunicacao parada e o transmissor ocioso. A reinicializacao limpa as filas de software e o estado.
+Bytes ja entregues ao hardware ou recebidos pelo computador nao podem ser recolhidos por essa limpeza.
+Se uma futura resposta ultrapassar 512 bytes, faulted fica true e o transporte para ate initialize, sem transmitir um prefixo truncado.
+Esse caso indica quebra do limite interno, nao erro de comando; nao ha desfazimento de comandos ja aplicados.
+
+Os 18 novos testes cobrem pausas no envio, listagens completas, ordem dos comandos, erros, estouro da fila, reinicializacao e o adaptador AVR.
+Total: 224 testes nativos. O ponto de entrada do firmware, os arquivos ELF/HEX e a validacao fisica ficam para as proximas etapas.
