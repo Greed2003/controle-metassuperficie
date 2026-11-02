@@ -113,10 +113,10 @@ TEST_F(ListCommandTest, PreservesStateWhenRepeated) {
     expect_state(4, 5);
 }
 
-TEST_F(ListCommandTest, RejectsBeforeModeSelectionWithoutOutput) {
+TEST_F(ListCommandTest, RejectsBeforeModeSelectionWithoutListing) {
     ControllerState initial;
     EXPECT_FALSE(process_command("LISTA", 5, initial, &output_));
-    EXPECT_TRUE(output_.text.empty());
+    EXPECT_EQ("ERRO: selecione um modo de M1 a M32.\n", output_.text);
     EXPECT_EQ(0, initial.mode());
     EXPECT_EQ(0u, initial.outputs());
 }
@@ -134,20 +134,23 @@ TEST_F(ListCommandTest, RejectsMissingOutputWithoutChangingState) {
     expect_state(4, 5);
 }
 
-TEST_F(ListCommandTest, RejectsMalformedInputWithoutOutputOrStateChanges) {
+TEST_F(ListCommandTest, RejectsMalformedInputWithoutListingOrStateChanges) {
     const char* invalid[] = {
         "", "LIST", "LISTAA", "lista", "Lista", " LISTA", "LISTA ",
         "LISTA1", "LISTA\n", "LISTA\r", "XISTA", "LIS TA"
     };
     for (const char* text : invalid) {
+        output_.text.clear();
         EXPECT_FALSE(process_command(text, std::strlen(text), state_, &output_));
-        EXPECT_TRUE(output_.text.empty());
+        EXPECT_EQ("ERRO: comando invalido; use M1 a M32, Tn, LISTA ou bits.\n", output_.text);
         expect_state(4, 5);
     }
+    output_.text.clear();
     const char embedded_null[] = {'L', 'I', '\0', 'T', 'A'};
     EXPECT_FALSE(process_command(embedded_null, sizeof(embedded_null), state_, &output_));
     EXPECT_FALSE(process_command(nullptr, 5, state_, &output_));
-    EXPECT_TRUE(output_.text.empty());
+    EXPECT_EQ(std::string("ERRO: comando invalido; use M1 a M32, Tn, LISTA ou bits.\n")
+        + "ERRO: comando invalido; use M1 a M32, Tn, LISTA ou bits.\n", output_.text);
     expect_state(4, 5);
 }
 
@@ -165,7 +168,7 @@ TEST_F(ListCommandTest, OtherCommandsDoNotWriteLists) {
     expect_state(2, 3);
     ASSERT_TRUE(process_command("10", 2, state_, &output_));
     expect_state(2, 1);
-    EXPECT_TRUE(output_.text.empty());
+    EXPECT_EQ("OK: modo M2; saidas desligadas.\nOK: tabela aplicada.\nOK: saidas atualizadas.\n", output_.text);
 }
 
 TEST_F(ListCommandTest, WaitsForLfBeforeListing) {
@@ -189,7 +192,8 @@ TEST_F(ListCommandTest, AcceptsCrLfOnlyAfterLf) {
 
 TEST_F(ListCommandTest, RecoversAfterInvalidListLine) {
     EXPECT_EQ(ReceiveResult::Rejected, feed("LISTA1\n"));
-    EXPECT_TRUE(output_.text.empty());
+    EXPECT_EQ("ERRO: comando invalido; use M1 a M32, Tn, LISTA ou bits.\n", output_.text);
+    output_.text.clear();
     expect_state(4, 5);
     EXPECT_EQ(ReceiveResult::Applied, feed("LISTA\n"));
     EXPECT_EQ(kModeFourList, output_.text);
@@ -198,11 +202,11 @@ TEST_F(ListCommandTest, RecoversAfterInvalidListLine) {
 
 TEST_F(ListCommandTest, ListsUpdatedModeAfterModeAndTableCommands) {
     ASSERT_EQ(ReceiveResult::Applied, feed("M1\nT2\nLISTA\n"));
-    EXPECT_EQ("M1\nT1: 0\nT2: 1\n", output_.text);
+    EXPECT_EQ("OK: modo M1; saidas desligadas.\nOK: tabela aplicada.\nM1\nT1: 0\nT2: 1\n", output_.text);
     expect_state(1, 1);
     output_.text.clear();
     ASSERT_EQ(ReceiveResult::Applied, feed("M2\nT4\nLISTA\r\n"));
-    EXPECT_EQ("M2\nT1: 00\nT2: 01\nT3: 10\nT4: 11\n", output_.text);
+    EXPECT_EQ("OK: modo M2; saidas desligadas.\nOK: tabela aplicada.\nM2\nT1: 00\nT2: 01\nT3: 10\nT4: 11\n", output_.text);
     expect_state(2, 3);
 }
 
