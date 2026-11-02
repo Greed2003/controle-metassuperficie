@@ -157,3 +157,20 @@ Comandos inválidos retornam `false` e preservam o modo e as saídas anteriores.
 O comprimento informado inclui somente os caracteres do comando,
 sem terminador nulo ou quebra de linha. O buffer deve conter pelo menos
 a quantidade de bytes informada e não precisa terminar em nulo.
+
+### Processamento de comandos
+
+A função `process_command` recebe um comando completo e atualiza
+o estado lógico por meio dos parsers e de `ControllerState`.
+
+- `M1` a `M32`: selecionam o modo e zeram as saídas.
+- Uma sequência binária com N caracteres atualiza as saídas no modo N.
+- Entradas binárias antes da seleção de modo são rejeitadas.
+- Comandos inválidos preservam o modo e as saídas anteriores.
+
+O retorno é `true` para um comando aplicado e `false` para um comando rejeitado.
+Por exemplo, `M4` seguido de `1010` deixa os canais 1 e 3 em 1.
+
+Cada chamada recebe somente os caracteres de um comando, sem quebra de linha.
+O buffer deve conter pelo menos a quantidade de bytes informada
+e não precisa terminar em nulo.
