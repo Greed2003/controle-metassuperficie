@@ -334,3 +334,19 @@ docker compose run --rm dev cmake "-DARCHIVE=build/avr/libmetasurface_core.a" -P
 O script exige que kPatterns ocupe 1536 bytes em uma secao .progmem.data. O Jenkins executa essa verificacao na etapa Compilar AVR.
 A verificacao inspeciona a biblioteca, sem executar codigo na placa. Os 153 testes continuam sendo executados na compilacao nativa.
 pgm_read_dword requer o catalogo nos primeiros 64 KiB da Flash; a posicao final e o uso total de memoria devem ser conferidos ao ligar o firmware.
+
+## Controle das saidas digitais
+
+A interface DigitalOutput separa a aplicacao dos estados da escrita no hardware.
+O canal 1 corresponde a D22 e o canal 32 a D53; o canal n usa D(n + 21).
+O bit 0 representa o canal 1. true significa HIGH/ligado e false significa LOW/desligado.
+
+initialize_outputs escreve LOW nos 32 pinos antes de configurar qualquer um como saida.
+O adaptador deve guardar o nivel em write mesmo antes de configure_output e preserva-lo ao habilitar a saida.
+Chame initialize_outputs na inicializacao, antes de aplicar comandos.
+apply_outputs escreve os 32 niveis de ControllerState, incluindo LOW nos canais fora do modo.
+As escritas sao sequenciais. Essas funcoes nao alteram o estado logico nem interpretam comandos.
+
+Os 14 novos testes usam um substituto de DigitalOutput para verificar pinos, niveis, ordem de inicializacao e aplicacao dos comandos.
+Nesta etapa, o chamador invoca apply_outputs explicitamente; o receptor de linhas continua independente do hardware.
+O adaptador AVR, a integracao com UART e a validacao fisica ficam para as proximas etapas.
