@@ -281,3 +281,39 @@ O receptor fica pronto para o proximo comando depois de cada linha.
 Todas as respostas terminam com LF. Passe o mesmo destino em cada chamada de recepcao.
 Sem destino de saida, M, T e binarios continuam funcionando; LISTA exige um destino.
 As confirmacoes indicam atualizacao do estado logico; a integracao com GPIO e UART sera feita depois.
+
+## Compilacao para ATmega2560
+
+As imagens de desenvolvimento e do agente Jenkins incluem gcc-avr, avr-libc e binutils-avr.
+O arquivo `cmake/avr-mega2560.cmake` seleciona avr-g++, o ATmega2560 e as ferramentas de arquivo AVR.
+O nucleo continua usando C++11. A compilacao AVR desativa excecoes e RTTI.
+
+Reconstrua a imagem de desenvolvimento depois de alterar o Dockerfile:
+
+```powershell
+docker compose build dev
+```
+
+Para compilar o nucleo para o microcontrolador:
+
+```powershell
+docker compose run --rm dev cmake -S . -B build/avr "-DCMAKE_TOOLCHAIN_FILE=cmake/avr-mega2560.cmake" -DCMAKE_BUILD_TYPE=MinSizeRel -DBUILD_TESTING=OFF
+docker compose run --rm dev cmake --build build/avr --parallel 2
+docker compose run --rm dev avr-objdump -f build/avr/libmetasurface_core.a
+```
+
+A biblioteca AVR fica em `build/avr/libmetasurface_core.a`; a biblioteca nativa permanece em `build/libmetasurface_core.a`.
+Os objetos do ATmega2560 usam a arquitetura avr:6, mostrada pelo avr-objdump.
+Os 153 testes GoogleTest continuam sendo executados no computador, na pasta build.
+BUILD_TESTING deve ficar OFF na compilacao cruzada, para nao misturar GoogleTest nativo com objetos AVR.
+
+O Jenkins inclui a etapa Compilar AVR e arquiva as duas bibliotecas.
+Depois de alterar o Dockerfile do agente, reconstrua a imagem e atualize o servico antes de executar a pipeline:
+
+```powershell
+docker compose -f compose.jenkins.yaml build agent
+docker compose -f compose.jenkins.yaml up -d --no-deps agent
+```
+
+Esta etapa verifica a compilacao do nucleo para AVR. Ainda nao gera firmware .hex nem grava a placa.
+A ligacao do programa completo e a integracao com UART e GPIO serao adicionadas nas proximas etapas.

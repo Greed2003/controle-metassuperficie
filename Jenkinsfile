@@ -32,6 +32,15 @@ pipeline {
             }
         }
 
+        stage('Compilar AVR') {
+            steps {
+                sh 'avr-g++ --version'
+                sh 'cmake -S . -B build/avr -DCMAKE_TOOLCHAIN_FILE=cmake/avr-mega2560.cmake -DCMAKE_BUILD_TYPE=MinSizeRel -DBUILD_TESTING=OFF'
+                sh 'cmake --build build/avr --parallel 2'
+                sh 'avr-objdump -f build/avr/libmetasurface_core.a'
+            }
+        }
+
         stage("Testar") {
             steps {
                 dir("build") {
@@ -48,7 +57,7 @@ pipeline {
 
     post {
         success {
-            archiveArtifacts artifacts: "build/libmetasurface_core.a", fingerprint: true
+            archiveArtifacts artifacts: "build/libmetasurface_core.a,build/avr/libmetasurface_core.a", fingerprint: true
         }
     }
 }

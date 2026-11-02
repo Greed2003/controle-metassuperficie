@@ -23,6 +23,10 @@ target_compile_options(metasurface_core PRIVATE -Wall -Wextra -Wpedantic)
 
 include(CTest)
 
+if(CMAKE_CROSSCOMPILING AND BUILD_TESTING)
+    message(FATAL_ERROR "Use -DBUILD_TESTING=OFF para AVR; execute os testes na compilacao nativa.")
+endif()
+
 if(BUILD_TESTING)
     find_package(GTest REQUIRED)
 
