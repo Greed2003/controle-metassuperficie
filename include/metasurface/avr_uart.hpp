@@ -1,7 +1,7 @@
 #ifndef METASURFACE_AVR_UART_HPP
 #define METASURFACE_AVR_UART_HPP
 
-#include <stdint.h>
+#include "metasurface/uart.hpp"
 
 namespace metasurface {
 
@@ -15,9 +15,7 @@ struct AvrUartRegisters {
     volatile uint8_t& data;
 };
 
-enum class UartReadResult { Empty, Received, Error };
-
-class AvrUart {
+class AvrUart : public Uart {
 public:
 #if defined(__AVR__)
     AvrUart();
@@ -25,11 +23,11 @@ public:
     // Referenced registers must outlive this object.
     explicit AvrUart(const AvrUartRegisters& registers);
     // Call before communication: UART0, 16 MHz, nominal 115200 baud, 8N1.
-    void initialize();
+    void initialize() override;
     // Error consumes the faulty byte; only Received changes value.
-    UartReadResult try_read(uint8_t& value);
+    UartReadResult try_read(uint8_t& value) override;
     // True means accepted by the transmit buffer, not fully transmitted.
-    bool try_write(uint8_t value);
+    bool try_write(uint8_t value) override;
 
 private:
     const AvrUartRegisters registers_;

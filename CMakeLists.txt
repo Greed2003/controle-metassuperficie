@@ -19,6 +19,7 @@ add_library(metasurface_core STATIC
     src/command_response.cpp
     src/output_control.cpp
     src/controller_application.cpp
+    src/serial_transport.cpp
 )
 target_include_directories(metasurface_core PUBLIC include)
 target_compile_options(metasurface_core PRIVATE -Wall -Wextra -Wpedantic)
@@ -111,4 +112,9 @@ if(BUILD_TESTING)
     target_link_libraries(controller_application_tests PRIVATE metasurface_core GTest::gtest_main)
     target_compile_options(controller_application_tests PRIVATE -Wall -Wextra -Wpedantic)
     gtest_discover_tests(controller_application_tests)
+
+    add_executable(serial_transport_tests tests/serial_transport_test.cpp)
+    target_link_libraries(serial_transport_tests PRIVATE metasurface_avr GTest::gtest_main)
+    target_compile_options(serial_transport_tests PRIVATE -Wall -Wextra -Wpedantic)
+    gtest_discover_tests(serial_transport_tests)
 endif()
