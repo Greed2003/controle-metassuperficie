@@ -12,6 +12,7 @@ add_library(metasurface_core STATIC
     src/binary_input.cpp
     src/mode_command.cpp
     src/command_processor.cpp
+    src/line_receiver.cpp
 )
 target_include_directories(metasurface_core PUBLIC include)
 target_compile_options(metasurface_core PRIVATE -Wall -Wextra -Wpedantic)
@@ -47,4 +48,9 @@ if(BUILD_TESTING)
     target_link_libraries(command_processor_tests PRIVATE metasurface_core GTest::gtest_main)
     target_compile_options(command_processor_tests PRIVATE -Wall -Wextra -Wpedantic)
     gtest_discover_tests(command_processor_tests)
+
+    add_executable(line_receiver_tests tests/line_receiver_test.cpp)
+    target_link_libraries(line_receiver_tests PRIVATE metasurface_core GTest::gtest_main)
+    target_compile_options(line_receiver_tests PRIVATE -Wall -Wextra -Wpedantic)
+    gtest_discover_tests(line_receiver_tests)
 endif()
