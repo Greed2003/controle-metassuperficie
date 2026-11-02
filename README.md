@@ -193,3 +193,20 @@ Retornos de `receive`:
 - `Pending`: aguardando a conclusão da linha ou um novo comando.
 - `Applied`: comando completo aceito e aplicado ao estado lógico.
 - `Rejected`: linha concluída e rejeitada.
+
+### Catálogo de padrões
+
+O catálogo contém 362 combinações: 2 em M1, 4 em M2, 8 em M3
+e 12 por modo de M4 a M32, sem repetição dentro de cada modo.
+A numeração segue os padrões iniciais de Tabelas_M1_M32.xlsx.
+
+`pattern_count(mode)` retorna a quantidade de tabelas do modo
+ou zero para um modo inválido.
+
+`get_pattern(mode, table, outputs)` consulta uma tabela, numerada a partir de 1.
+Retorna `true` e escreve a máscara em `outputs` quando a consulta é válida.
+Em caso de erro, retorna `false` e preserva o valor anterior de `outputs`.
+
+O bit 0 corresponde ao canal 1. Canais fora do modo permanecem em zero.
+Por exemplo, M4/T5 corresponde a `1100`, representado pela máscara `0x00000003`.
+O catálogo usa uma tabela fixa, sem alocação dinâmica.
