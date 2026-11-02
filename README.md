@@ -144,3 +144,16 @@ Por exemplo, no modo 4, `1010` corresponde à máscara 5: canais 1 e 3 ativos.
 O comprimento não inclui o terminador nulo. O buffer deve conter
 pelo menos a quantidade de bytes informada; não precisa terminar em nulo.
 Em caso de erro, a função retorna `false` e preserva o argumento de saída.
+
+### Comandos de modo
+
+A função `apply_mode_command` interpreta comandos de `M1` a `M32`
+e aplica a seleção por meio de `ControllerState`.
+Os comandos usam `M` maiúsculo, sem espaços nem zeros à esquerda.
+
+Uma seleção válida zera todas as saídas, inclusive ao repetir o modo atual.
+Comandos inválidos retornam `false` e preservam o modo e as saídas anteriores.
+
+O comprimento informado inclui somente os caracteres do comando,
+sem terminador nulo ou quebra de linha. O buffer deve conter pelo menos
+a quantidade de bytes informada e não precisa terminar em nulo.
