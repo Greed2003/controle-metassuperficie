@@ -174,3 +174,22 @@ Por exemplo, `M4` seguido de `1010` deixa os canais 1 e 3 em 1.
 Cada chamada recebe somente os caracteres de um comando, sem quebra de linha.
 O buffer deve conter pelo menos a quantidade de bytes informada
 e não precisa terminar em nulo.
+
+### Recepção por linhas
+
+A classe `LineReceiver` recebe um caractere por chamada e armazena
+até 32 caracteres de comando em um buffer fixo, sem alocação dinâmica.
+O comando completo é encaminhado a `process_command` ao receber LF (`\n`).
+
+Também aceita CRLF (`\r\n`). O CR só é permitido imediatamente antes do LF.
+Linhas vazias são ignoradas.
+
+Linhas maiores que 32 caracteres ou com CR fora de posição são
+descartadas até o próximo LF. Uma linha rejeitada preserva o estado anterior.
+Após o LF, o receptor fica pronto para receber outro comando.
+
+Retornos de `receive`:
+
+- `Pending`: aguardando a conclusão da linha ou um novo comando.
+- `Applied`: comando completo aceito e aplicado ao estado lógico.
+- `Rejected`: linha concluída e rejeitada.
