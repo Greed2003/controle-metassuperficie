@@ -317,3 +317,20 @@ docker compose -f compose.jenkins.yaml up -d --no-deps agent
 
 Esta etapa verifica a compilacao do nucleo para AVR. Ainda nao gera firmware .hex nem grava a placa.
 A ligacao do programa completo e a integracao com UART e GPIO serao adicionadas nas proximas etapas.
+
+## Catalogo na memoria Flash
+
+No AVR, o catalogo usa PROGMEM e cada padrao e lido com pgm_read_dword.
+A matriz de 32 x 12 valores de 32 bits ocupa 1536 bytes, que deixam de precisar de uma copia na SRAM.
+Os 362 padroes validos e o comportamento dos comandos permanecem iguais.
+Na compilacao nativa, o acesso ao catalogo continua sendo direto.
+
+Depois de compilar a biblioteca AVR, confira sua tabela de simbolos:
+
+```powershell
+docker compose run --rm dev cmake "-DARCHIVE=build/avr/libmetasurface_core.a" -P ci/check-avr-catalog.cmake
+```
+
+O script exige que kPatterns ocupe 1536 bytes em uma secao .progmem.data. O Jenkins executa essa verificacao na etapa Compilar AVR.
+A verificacao inspeciona a biblioteca, sem executar codigo na placa. Os 153 testes continuam sendo executados na compilacao nativa.
+pgm_read_dword requer o catalogo nos primeiros 64 KiB da Flash; a posicao final e o uso total de memoria devem ser conferidos ao ligar o firmware.
