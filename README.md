@@ -497,3 +497,8 @@ A compilacao nativa continua independente das ferramentas AVR e executa os mesmo
 O firmware usa USART0 a 115200 baud nominais, 8N1, com clock de 16 MHz.
 Envie um comando por vez e aguarde a resposta completa, conforme Transporte serial.
 Esta etapa gera os arquivos; nao grava a placa, altera fuses nem valida temporizacao ou sinais fisicos.
+
+
+## Documentação do circuito
+
+[Esquemáticos, conexões e mapeamento dos canais](docs/hardware/README.md)
