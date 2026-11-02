@@ -210,3 +210,20 @@ Em caso de erro, retorna `false` e preserva o valor anterior de `outputs`.
 O bit 0 corresponde ao canal 1. Canais fora do modo permanecem em zero.
 Por exemplo, M4/T5 corresponde a `1100`, representado pela máscara `0x00000003`.
 O catálogo usa uma tabela fixa, sem alocação dinâmica.
+
+## Comandos de tabela
+
+O processador aceita `T<n>` para aplicar uma tabela do modo selecionado.
+M1 aceita T1 a T2; M2, T1 a T4; M3, T1 a T8; M4 a M32, T1 a T12.
+O comando substitui as saidas pelo padrao do catalogo e mantem o modo atual.
+T1 desliga todas as saidas. Repetir uma tabela reaplica o mesmo padrao.
+
+Exemplo: `M4`, seguido de `T5`, aplica `1100` aos canais 1 a 4.
+Depois disso, uma entrada manual como `0101` pode substituir esse padrao.
+
+Use T maiusculo, sem zeros a esquerda, espacos ou sinais.
+Sem modo selecionado, com numero fora do intervalo ou sintaxe invalida,
+o comando e rejeitado sem alterar o modo nem as saidas.
+`M<n>` e `T<n>` compartilham a validacao da sintaxe numerica.
+
+Na recepcao por linhas, o comando so e aplicado ao receber LF; CRLF tambem e aceito.
