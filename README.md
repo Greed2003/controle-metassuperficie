@@ -304,7 +304,7 @@ docker compose run --rm dev avr-objdump -f build/avr/libmetasurface_core.a
 
 A biblioteca AVR fica em `build/avr/libmetasurface_core.a`; a biblioteca nativa permanece em `build/libmetasurface_core.a`.
 Os objetos do ATmega2560 usam a arquitetura avr:6, mostrada pelo avr-objdump.
-Os 178 testes GoogleTest continuam sendo executados no computador, na pasta build.
+Os 189 testes GoogleTest continuam sendo executados no computador, na pasta build.
 BUILD_TESTING deve ficar OFF na compilacao cruzada, para nao misturar GoogleTest nativo com objetos AVR.
 
 O Jenkins inclui a etapa Compilar AVR e arquiva o nucleo nativo, o nucleo AVR e o adaptador AVR.
@@ -332,7 +332,7 @@ docker compose run --rm dev cmake "-DARCHIVE=build/avr/libmetasurface_core.a" -P
 ```
 
 O script exige que kPatterns ocupe 1536 bytes em uma secao .progmem.data. O Jenkins executa essa verificacao na etapa Compilar AVR.
-A verificacao inspeciona a biblioteca, sem executar codigo na placa. Os 178 testes continuam sendo executados na compilacao nativa.
+A verificacao inspeciona a biblioteca, sem executar codigo na placa. Os 189 testes continuam sendo executados na compilacao nativa.
 pgm_read_dword requer o catalogo nos primeiros 64 KiB da Flash; a posicao final e o uso total de memoria devem ser conferidos ao ligar o firmware.
 
 ## Controle das saidas digitais
@@ -349,7 +349,7 @@ As escritas sao sequenciais. Essas funcoes nao alteram o estado logico nem inter
 
 Os 14 novos testes usam um substituto de DigitalOutput para verificar pinos, niveis, ordem de inicializacao e aplicacao dos comandos.
 Nesta etapa, o chamador invoca apply_outputs explicitamente; o receptor de linhas continua independente do hardware.
-O adaptador AVR esta descrito abaixo; a integracao com UART e a validacao fisica ficam para as proximas etapas.
+Os adaptadores de GPIO e UART estao descritos abaixo; a integracao do firmware e a validacao fisica ficam para as proximas etapas.
 
 ## GPIO do ATmega2560
 
@@ -378,5 +378,32 @@ O adaptador nao configura nem desativa esses perifericos.
 No firmware AVR, crie AvrDigitalOutput, chame initialize_outputs na inicializacao e apply_outputs para aplicar ControllerState.
 A biblioteca separada fica em build/avr/libmetasurface_avr.a e depende de metasurface_core.
 O Jenkins compila e arquiva essa biblioteca junto das bibliotecas do nucleo.
-Os 11 novos testes verificam mapeamento, bits preservados, inicializacao e aplicacao dos estados: 178 testes nativos no total.
+Os testes de GPIO verificam mapeamento, bits preservados, inicializacao e aplicacao dos estados.
 Os testes usam registradores simulados. A compilacao AVR ainda produz bibliotecas estaticas; nao gera .hex nem valida sinais na placa.
+
+## UART do ATmega2560
+
+AvrUart usa a USART0: D0/RX0 e D1/TX0. O construtor AVR referencia os registradores reais; o alternativo recebe referencias para testes.
+Os registradores referenciados devem existir enquanto o adaptador for usado. Os construtores nao escrevem neles.
+
+initialize configura 115200 baud nominais, 8 bits, sem paridade e 1 bit de parada, com RX e TX habilitados e interrupcoes da UART desabilitadas.
+O clock real deve ser 16 MHz. O CMake define F_CPU=16000000UL; essa definicao nao altera o clock fisico.
+U2X0=1 e UBRR0=16 produzem aproximadamente 117647 baud, desvio de +2,12% em relacao ao nominal; a comunicacao fisica sera validada na placa.
+A inicializacao habilita o clock da USART0 preservando os outros bits de PRR0. No AVR, restaura o estado anterior das interrupcoes globais.
+Chame initialize antes da comunicacao, com o transmissor ocioso; desabilitar RX descarta dados pendentes no hardware.
+
+| Operacao | Resultado |
+| --- | --- |
+| try_read(value) | Received entrega um byte, incluindo 0x00. Empty indica ausencia de byte disponivel ou receptor/clock desabilitado. |
+| try_read(value) com FE, DOR ou UPE | Error consome o byte com erro e preserva value. |
+| try_write(value) | true indica byte aceito pelo buffer; false indica buffer ocupado ou transmissor/clock desabilitado. |
+
+As operacoes retornam imediatamente. true em try_write nao significa que o ultimo bit ja saiu pelo pino.
+Use a UART por consulta de flags, a partir de um unico fluxo de execucao, sem outro driver ou ISR acessando a USART0.
+O chamador deve consultar a recepcao frequentemente para evitar perda de dados. Ao receber Error, deve invalidar a linha atual ate um novo LF valido.
+A ligacao com LineReceiver, TextOutput e GPIO sera feita na integracao do firmware; este adaptador troca bytes e nao interpreta comandos.
+
+A UART integra libmetasurface_avr.a, ja compilada e arquivada pelo Jenkins.
+Os 11 novos testes cobrem configuracao, disponibilidade, todos os valores de byte e erros: 189 testes nativos no total.
+Os registradores simulados verificam a logica e as escritas; nao reproduzem temporizacao nem todos os efeitos automaticos do hardware, como o avanco da FIFO.
+Referencia: ATmega2560 Datasheet, secoes 22.5, 22.7 e 22.10, tabela 22-12.
