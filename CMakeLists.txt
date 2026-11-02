@@ -14,6 +14,7 @@ add_library(metasurface_core STATIC
     src/command_processor.cpp
     src/line_receiver.cpp
     src/pattern_catalog.cpp
+    src/table_command.cpp
 )
 target_include_directories(metasurface_core PUBLIC include)
 target_compile_options(metasurface_core PRIVATE -Wall -Wextra -Wpedantic)
@@ -59,4 +60,9 @@ if(BUILD_TESTING)
     target_link_libraries(pattern_catalog_tests PRIVATE metasurface_core GTest::gtest_main)
     target_compile_options(pattern_catalog_tests PRIVATE -Wall -Wextra -Wpedantic)
     gtest_discover_tests(pattern_catalog_tests)
+
+    add_executable(table_command_tests tests/table_command_test.cpp)
+    target_link_libraries(table_command_tests PRIVATE metasurface_core GTest::gtest_main)
+    target_compile_options(table_command_tests PRIVATE -Wall -Wextra -Wpedantic)
+    gtest_discover_tests(table_command_tests)
 endif()
