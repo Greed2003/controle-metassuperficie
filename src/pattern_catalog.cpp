@@ -1,13 +1,21 @@
 #include "metasurface/pattern_catalog.hpp"
 #include "metasurface/mode.hpp"
 
+#if defined(__AVR__)
+#include <avr/pgmspace.h>
+#endif
+
 namespace metasurface {
 namespace {
 
 constexpr int kMaxPatterns = 12;
 
 // Bit 0 corresponds to channel 1.
-const uint32_t kPatterns[kMaxChannels][kMaxPatterns] = {
+const uint32_t kPatterns[kMaxChannels][kMaxPatterns]
+#if defined(__AVR__)
+    PROGMEM
+#endif
+    = {
     {0x00000000u, 0x00000001u}, // M1
     {0x00000000u, 0x00000002u, 0x00000001u, 0x00000003u}, // M2
     {0x00000000u, 0x00000004u, 0x00000002u, 0x00000006u, 0x00000001u, 0x00000005u, // M3
@@ -85,7 +93,11 @@ bool get_pattern(int mode, int table, uint32_t& outputs) {
     if (table < 1 || table > pattern_count(mode)) {
         return false;
     }
+#if defined(__AVR__)
+    outputs = pgm_read_dword(&kPatterns[mode - 1][table - 1]);
+#else
     outputs = kPatterns[mode - 1][table - 1];
+#endif
     return true;
 }
 
