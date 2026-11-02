@@ -1,5 +1,7 @@
 #include "metasurface/line_receiver.hpp"
 #include "metasurface/command_processor.hpp"
+#include "command_response.hpp"
+#include "metasurface/controller_state.hpp"
 
 namespace metasurface {
 
@@ -11,6 +13,7 @@ ReceiveResult LineReceiver::receive(char character, ControllerState& state,
     if (character == '\n') {
         ReceiveResult result = ReceiveResult::Pending;
         if (discarding_) {
+            write_command_response(CommandResponse::InvalidLine, state.mode(), output);
             result = ReceiveResult::Rejected;
         } else if (length_ > 0) {
             result = process_command(buffer_, length_, state, output)

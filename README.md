@@ -247,7 +247,37 @@ T4: 11
 Cada padrao tem exatamente a quantidade de bits do modo, preservando zeros a esquerda.
 O primeiro bit corresponde ao canal 1. As linhas da resposta terminam com LF.
 
-A interface `TextOutput` recebe o texto uma linha por vez, usando um buffer fixo.
+A listagem usa `TextOutput` para enviar uma linha por vez, com um buffer fixo.
 Passe o destino de saida a `process_command` ou a `LineReceiver::receive`.
 Sem modo selecionado ou sem destino de saida, LISTA e rejeitado.
 A conexao dessa interface com a UART sera adicionada na etapa de hardware.
+
+## Respostas aos comandos
+
+Com um destino `TextOutput`, comandos M, T e binarios enviam uma confirmacao de sucesso.
+LISTA continua respondendo com o catalogo, sem uma linha OK adicional.
+Erros preservam o modo e as saidas e informam como corrigir a entrada.
+
+Exemplos no modo M4:
+
+| Entrada | Resposta |
+| --- | --- |
+| `M4` | `OK: modo M4; saidas desligadas.` |
+| `T2` | `OK: tabela aplicada.` |
+| `1010` | `OK: saidas atualizadas.` |
+| `101` | `ERRO: entrada binaria invalida; envie exatamente 4 bits (0 ou 1).` |
+| `T13` | `ERRO: tabela invalida; use T1 a T12.` |
+| `M33` | `ERRO: modo invalido; use M1 a M32.` |
+
+Antes da selecao de modo, dados, tabelas e LISTA solicitam M1 a M32.
+Entradas binarias comecam com 0 ou 1; outros comandos desconhecidos recebem orientacao de sintaxe.
+O intervalo de tabelas acompanha o modo: T1 a T2, T4, T8 ou T12.
+
+`LineReceiver` responde somente ao receber LF, inclusive em linhas terminadas com CRLF.
+Linhas vazias sao ignoradas. Linhas longas ou com CR fora do terminador geram um unico erro no LF.
+O receptor fica pronto para o proximo comando depois de cada linha.
+
+`TextOutput::write` pode receber fragmentos da resposta; consuma os bytes antes de retornar.
+Todas as respostas terminam com LF. Passe o mesmo destino em cada chamada de recepcao.
+Sem destino de saida, M, T e binarios continuam funcionando; LISTA exige um destino.
+As confirmacoes indicam atualizacao do estado logico; a integracao com GPIO e UART sera feita depois.
