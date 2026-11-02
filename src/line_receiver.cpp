@@ -9,14 +9,14 @@ LineReceiver::LineReceiver()
     : buffer_{}, length_(0), discarding_(false), carriage_return_(false) {}
 
 ReceiveResult LineReceiver::receive(char character, ControllerState& state,
-                                    TextOutput* output) {
+                                    TextOutput* output, DigitalOutput* pins) {
     if (character == '\n') {
         ReceiveResult result = ReceiveResult::Pending;
         if (discarding_) {
             write_command_response(CommandResponse::InvalidLine, state.mode(), output);
             result = ReceiveResult::Rejected;
         } else if (length_ > 0) {
-            result = process_command(buffer_, length_, state, output)
+            result = process_command(buffer_, length_, state, output, pins)
                 ? ReceiveResult::Applied : ReceiveResult::Rejected;
         }
         reset();
@@ -28,7 +28,7 @@ ReceiveResult LineReceiver::receive(char character, ControllerState& state,
     }
 
     if (carriage_return_) {
-        discarding_ = true;
+        discard_line();
         return ReceiveResult::Pending;
     }
 
@@ -38,12 +38,17 @@ ReceiveResult LineReceiver::receive(char character, ControllerState& state,
     }
 
     if (length_ == sizeof(buffer_)) {
-        discarding_ = true;
+        discard_line();
         return ReceiveResult::Pending;
     }
 
     buffer_[length_++] = character;
     return ReceiveResult::Pending;
+}
+
+void LineReceiver::discard_line() {
+    reset();
+    discarding_ = true;
 }
 
 void LineReceiver::reset() {

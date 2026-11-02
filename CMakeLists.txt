@@ -18,6 +18,7 @@ add_library(metasurface_core STATIC
     src/pattern_list.cpp
     src/command_response.cpp
     src/output_control.cpp
+    src/controller_application.cpp
 )
 target_include_directories(metasurface_core PUBLIC include)
 target_compile_options(metasurface_core PRIVATE -Wall -Wextra -Wpedantic)
@@ -105,4 +106,9 @@ if(BUILD_TESTING)
     target_link_libraries(avr_uart_tests PRIVATE metasurface_avr GTest::gtest_main)
     target_compile_options(avr_uart_tests PRIVATE -Wall -Wextra -Wpedantic)
     gtest_discover_tests(avr_uart_tests)
+
+    add_executable(controller_application_tests tests/controller_application_test.cpp)
+    target_link_libraries(controller_application_tests PRIVATE metasurface_core GTest::gtest_main)
+    target_compile_options(controller_application_tests PRIVATE -Wall -Wextra -Wpedantic)
+    gtest_discover_tests(controller_application_tests)
 endif()

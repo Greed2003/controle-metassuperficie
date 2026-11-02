@@ -7,6 +7,7 @@
 namespace metasurface {
 
 class ControllerState;
+class DigitalOutput;
 class TextOutput;
 
 enum class ReceiveResult { Pending, Applied, Rejected };
@@ -15,7 +16,9 @@ class LineReceiver {
 public:
     LineReceiver();
     ReceiveResult receive(char character, ControllerState& state,
-                          TextOutput* output = nullptr);
+                          TextOutput* output = nullptr, DigitalOutput* pins = nullptr);
+    // Rejects the entire current line at the next valid LF.
+    void discard_line();
 
 private:
     void reset();

@@ -304,7 +304,7 @@ docker compose run --rm dev avr-objdump -f build/avr/libmetasurface_core.a
 
 A biblioteca AVR fica em `build/avr/libmetasurface_core.a`; a biblioteca nativa permanece em `build/libmetasurface_core.a`.
 Os objetos do ATmega2560 usam a arquitetura avr:6, mostrada pelo avr-objdump.
-Os 189 testes GoogleTest continuam sendo executados no computador, na pasta build.
+Os 206 testes GoogleTest continuam sendo executados no computador, na pasta build.
 BUILD_TESTING deve ficar OFF na compilacao cruzada, para nao misturar GoogleTest nativo com objetos AVR.
 
 O Jenkins inclui a etapa Compilar AVR e arquiva o nucleo nativo, o nucleo AVR e o adaptador AVR.
@@ -332,7 +332,7 @@ docker compose run --rm dev cmake "-DARCHIVE=build/avr/libmetasurface_core.a" -P
 ```
 
 O script exige que kPatterns ocupe 1536 bytes em uma secao .progmem.data. O Jenkins executa essa verificacao na etapa Compilar AVR.
-A verificacao inspeciona a biblioteca, sem executar codigo na placa. Os 189 testes continuam sendo executados na compilacao nativa.
+A verificacao inspeciona a biblioteca, sem executar codigo na placa. Os 206 testes continuam sendo executados na compilacao nativa.
 pgm_read_dword requer o catalogo nos primeiros 64 KiB da Flash; a posicao final e o uso total de memoria devem ser conferidos ao ligar o firmware.
 
 ## Controle das saidas digitais
@@ -348,7 +348,7 @@ apply_outputs escreve os 32 niveis de ControllerState, incluindo LOW nos canais 
 As escritas sao sequenciais. Essas funcoes nao alteram o estado logico nem interpretam comandos.
 
 Os 14 novos testes usam um substituto de DigitalOutput para verificar pinos, niveis, ordem de inicializacao e aplicacao dos comandos.
-Nesta etapa, o chamador invoca apply_outputs explicitamente; o receptor de linhas continua independente do hardware.
+ControllerApplication coordena a recepcao dos comandos e a aplicacao das saidas pelas interfaces abstratas.
 Os adaptadores de GPIO e UART estao descritos abaixo; a integracao do firmware e a validacao fisica ficam para as proximas etapas.
 
 ## GPIO do ATmega2560
@@ -404,6 +404,30 @@ O chamador deve consultar a recepcao frequentemente para evitar perda de dados. 
 A ligacao com LineReceiver, TextOutput e GPIO sera feita na integracao do firmware; este adaptador troca bytes e nao interpreta comandos.
 
 A UART integra libmetasurface_avr.a, ja compilada e arquivada pelo Jenkins.
-Os 11 novos testes cobrem configuracao, disponibilidade, todos os valores de byte e erros: 189 testes nativos no total.
+Os 11 testes da UART cobrem configuracao, disponibilidade, todos os valores de byte e erros.
 Os registradores simulados verificam a logica e as escritas; nao reproduzem temporizacao nem todos os efeitos automaticos do hardware, como o avanco da FIFO.
 Referencia: ATmega2560 Datasheet, secoes 22.5, 22.7 e 22.10, tabela 22-12.
+
+## Aplicacao do controlador
+
+ControllerApplication possui o estado e o receptor de linhas, e recebe DigitalOutput e um TextOutput opcional.
+Essas dependencias devem existir enquanto a aplicacao for usada. O construtor nao executa I/O.
+initialize reinicia o modo, as saidas logicas e a recepcao; escreve LOW nos 32 pinos antes de configura-los como saida.
+Antes de initialize, receive retorna Pending e ignora os bytes; discard_line tambem nao produz efeitos.
+
+receive recebe um byte valido por chamada. M, T e bits aceitos escrevem os 32 niveis antes de iniciar a resposta de sucesso.
+LISTA e comandos rejeitados nao escrevem nem reconfiguram os pinos. Linhas vazias nao geram respostas.
+ReceiveResult::Applied significa comando aceito, incluindo LISTA; a aplicacao ja cuida das escritas necessarias.
+state permite consultar o estado sem modifica-lo. A confirmacao indica escritas solicitadas ao adaptador, sem medir o circuito fisico.
+
+Ao detectar erro de recepcao, o chamador deve usar discard_line e nao encaminhar o byte com erro a receive.
+A linha inteira e descartada ate o proximo LF recebido sem erro. Nesse LF, retorna Rejected e emite uma unica resposta de linha invalida.
+Erros repetidos durante o descarte nao geram respostas adicionais. O modo e as saidas anteriores sao preservados.
+Se o proprio LF foi perdido ou recebido com erro, o descarte continua ate outro LF valido, podendo incluir a linha seguinte.
+
+Sem TextOutput, M, T e bits continuam funcionando; LISTA e rejeitado por nao haver destino para a listagem.
+process_command e LineReceiver aceitam um DigitalOutput opcional, previamente inicializado; chamadas existentes continuam validas.
+Use um unico fluxo de execucao, sem chamadas reentrantes pelos adaptadores.
+O loop da UART, o transporte das respostas e a geracao do firmware .hex ficam para a proxima etapa.
+
+Os 17 novos testes verificam inicializacao, todos os modos e tabelas, ordem das respostas, preservacao das saidas e recuperacao de linhas: 206 testes nativos no total.
